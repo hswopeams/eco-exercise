@@ -10,8 +10,8 @@ const Secret = require("../../scripts/domain/Secret");
  */
 describe("Secret", function () {
   // Suite-wide scope
-  let accounts, id, secret, object, promoted, clone, dehydrated, rehydrated, key, value, struct;
-  let message, party1, party2, blockNumber;
+  let accounts, secret, object, promoted, clone, dehydrated, rehydrated, key, value, struct;
+  let id, message, party1, party2, blockNumber;
 
   context("📋 Constructor", async function () {
     beforeEach(async function () {
