@@ -12,7 +12,7 @@ contract Constants {
     // Revert Reasons
     string constant INVALID_ADDRESS = "Invalid address";
     string constant INVALID_SALT = "Invalid salt";
-    string constant INVALID_MESSAGE = "Invalid message";
+    string constant INVALID_SECRET = "Invalid secret";
     string constant INVALID_SECRET_ID = "Invalid secretId";
     string constant TRANSFER_FAILED = "Transfer failed";
     string constant INVALID_SIGNATURE = "Invalid signature";
