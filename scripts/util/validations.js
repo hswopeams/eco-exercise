@@ -101,7 +101,7 @@ function stringIsValid(string) {
 function bytes32IsValid(bytes32) {
   let valid = false;
   try {
-    valid = ethers.utils.isBytesLike(bytes32);
+    valid = ethers.utils.isBytesLike(bytes32) && ethers.utils.hexStripZeros(bytes32) != "0x";
   } catch (e) {}
   return valid;
 }

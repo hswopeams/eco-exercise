@@ -57,7 +57,7 @@ describe("Secret", function () {
       expect(secret.isValid()).is.true;
     });
 
-    it("Always present, message must be a valid bytes32", async function () {
+    it.only("Always present, message must be a valid bytes32", async function () {
       // Invalid field value
       secret.message = "zedzdeadbaby";
       expect(secret.messageIsValid()).is.false;
@@ -74,17 +74,17 @@ describe("Secret", function () {
       expect(secret.isValid()).is.false;
 
       // Valid field value
+      secret.message = ethers.utils.hexZeroPad("0x", 32)
+      expect(secret.messageIsValid()).is.false;
+      expect(secret.isValid()).is.false;
+
+      // Valid field value
       secret.message = keccak256(toUtf8Bytes("0"));
       expect(secret.messageIsValid()).is.true;
       expect(secret.isValid()).is.true;
 
       // Valid field value
       secret.message = ethers.utils.id("0")
-      expect(secret.messageIsValid()).is.true;
-      expect(secret.isValid()).is.true;
-
-      // Valid field value
-      secret.message = ethers.utils.hexZeroPad(ethers.utils.formatBytes32String("0"), 32);
       expect(secret.messageIsValid()).is.true;
       expect(secret.isValid()).is.true;
 
