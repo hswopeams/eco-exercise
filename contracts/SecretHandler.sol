@@ -42,7 +42,7 @@ contract SecretHandler is Killable, EIP712("SecretHandler", "1") {
      * @dev Since the structured data being signed includes both parties' addresses, only 1 signature is required. This saves the gas it could take to verify two
      * signatures.
      * 
-     * Emits an SecretCommitted event if successful.
+     * Emits a SecretCommitted event if successful.
      *
      * Reverts if:
      * - The hashedSecret is empty
