@@ -1,4 +1,4 @@
-const { bigNumberIsValid, booleanIsValid, addressIsValid, bytes32IsValid } = require("../util/validations.js");
+const { bigNumberIsValid, addressIsValid, bytes32IsValid } = require("../util/validations.js");
 
 /**
  * Domain Entity: Secret

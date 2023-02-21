@@ -1,24 +1,22 @@
 const {
   mine
 } = require("@nomicfoundation/hardhat-network-helpers");
-const { anyValue } = require("@nomicfoundation/hardhat-chai-matchers/withArgs");
-const { expect, assert} = require("chai");
+const { expect} = require("chai");
 const { ethers } = require("hardhat");
-const {keccak256, solidityPack, solidityKeccak256} = ethers.utils;
 const BigNumber = ethers.BigNumber;
-const crypto = require('crypto');
 const { RevertReasons } = require("../util/revert-reasons.js");
 const { prepareSplitSignature, getHashedSecret, getEvent } = require("../util/utils.js");
 const Secret = require("../../scripts/domain/Secret");
 
 describe("SecretHandler", function () {
    // Suite-wide scope
-   let secret, object, promoted, clone, dehydrated, rehydrated, key, secretStruct;
-   let id, message, party1, party2, blockNumber;
+   let secret, key, secretStruct, expectedSecret;
+   let id, party1, party2;
    let secretHandler;
-   let nextSecretId, emittedSecretId, salt, hashedSecret, secretBytes32, chainId;
+   let nextSecretId, emittedSecretId, salt, hashedSecret, secretBytes32;
    let domain, types, value;
-   let signature, splitSignature, r, s, v;
+   let signature, splitSignature;
+   let owner, rando;
 
   //before each test case in the suite
   beforeEach(async function () {
@@ -69,8 +67,8 @@ describe("SecretHandler", function () {
         salt = ethers.utils.randomBytes(32);
         const saltHexValue = ethers.utils.hexlify(salt);
       
-        hashedsecret = await secretHandler.connect(rando).hashSecret(secretBytes32, saltHexValue);
-        expect(hashedsecret).to.not.equal(ethers.constants.HashZero);
+        hashedSecret = await secretHandler.connect(rando).hashSecret(secretBytes32, saltHexValue);
+        expect(hashedSecret).to.not.equal(ethers.constants.HashZero);
       });
     });
   });
@@ -97,7 +95,7 @@ describe("SecretHandler", function () {
         expect(secret.isValid()).is.true;
       
         // Get secret as struct
-        const secretStruct = secret.toStruct();
+        secretStruct = secret.toStruct();
 
     })
 
@@ -433,7 +431,7 @@ describe("SecretHandler", function () {
    
     context("State", function () {
       it("should change state correctly when called by party1", async function () {
-        const tx = await secretHandler.connect(party1).revealSecret(secretBytes32, salt, emittedSecretId);
+        await secretHandler.connect(party1).revealSecret(secretBytes32, salt, emittedSecretId);
         secretStruct = await secretHandler.connect(rando).secrets(id);
 
         // Set expected secret to empty values
@@ -449,7 +447,7 @@ describe("SecretHandler", function () {
       });
 
       it("should change state correctly when called by party2", async function () {
-        const tx = await secretHandler.connect(party2).revealSecret(secretBytes32, salt, emittedSecretId);
+        await secretHandler.connect(party2).revealSecret(secretBytes32, salt, emittedSecretId);
         secretStruct = await secretHandler.connect(rando).secrets(id);
 
         // Set expected secret to empty values

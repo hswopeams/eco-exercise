@@ -1,8 +1,9 @@
 const hre = require("hardhat");
 const ethers = hre.ethers;
-const keccak256 = ethers.utils.keccak256;
+const {keccak256, solidityKeccak256} = ethers.utils;
 const toUtf8Bytes = ethers.utils.toUtf8Bytes;
 const { expect } = require("chai");
+const crypto = require('crypto');
 const Secret = require("../../scripts/domain/Secret");
 
 /**
@@ -20,15 +21,16 @@ describe("Secret", function () {
     
       // Required constructor params
       id = "1";
-      message = keccak256(toUtf8Bytes("this is a secret"));
+      message = solidityKeccak256(
+          ['bytes32', 'bytes32'],
+          [ethers.utils.formatBytes32String("this is a secret"), crypto.randomBytes(32)]
+      );
       party1 = accounts[1].address;
       party2 = accounts[2].address;
       blockNumber = "1000000";
     });
 
     it("Should allow creation of a valid, fully populated Secret instance", async function () {
-      message = keccak256(toUtf8Bytes("this is a secret"));
-
       // Create a valid secret
       secret = new Secret(id, message, blockNumber, party1, party2);
       expect(secret.idIsValid()).is.true;
@@ -47,7 +49,10 @@ describe("Secret", function () {
 
       // Required constructor params
       id = "1";
-      message = keccak256(toUtf8Bytes("this is a secret"));
+      message = solidityKeccak256(
+        ['bytes32', 'bytes32'],
+        [ethers.utils.formatBytes32String("this is a secret"), crypto.randomBytes(32)]
+      );
       party1 = accounts[1].address;
       party2 = accounts[2].address;
       blockNumber = "1000000";
@@ -57,7 +62,7 @@ describe("Secret", function () {
       expect(secret.isValid()).is.true;
     });
 
-    it.only("Always present, message must be a valid bytes32", async function () {
+    it("Always present, message must be a valid bytes32", async function () {
       // Invalid field value
       secret.message = "zedzdeadbaby";
       expect(secret.messageIsValid()).is.false;
@@ -88,8 +93,16 @@ describe("Secret", function () {
       expect(secret.messageIsValid()).is.true;
       expect(secret.isValid()).is.true;
 
+      // Valid field value
+      secret.message = keccak256(toUtf8Bytes("this is a secret"));
+      expect(secret.messageIsValid()).is.true;
+      expect(secret.isValid()).is.true;
+      
        // Valid field value
-       secret.message = keccak256(toUtf8Bytes("this is a secret"));
+       secret.message = solidityKeccak256(
+        ['bytes32', 'bytes32'],
+        [ethers.utils.formatBytes32String("this is a secret"), crypto.randomBytes(32)]
+      );
        expect(secret.messageIsValid()).is.true;
        expect(secret.isValid()).is.true;
     });

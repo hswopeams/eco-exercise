@@ -1,7 +1,10 @@
 const hre = require("hardhat");
 const ethers = hre.ethers;
 
+
 async function getHashedSecret(secretMessage, secretHandler) {
+    let rando;
+    [ , rando] = await ethers.getSigners();
     const salt = ethers.utils.randomBytes(32);
     const saltHexValue = ethers.utils.hexlify(salt);
     const hashedSecret = await secretHandler.connect(rando).hashSecret(secretMessage, saltHexValue);
@@ -23,14 +26,14 @@ async function prepareSplitSignature(
 ) {
     const chainId = (await ethers.provider.getNetwork()).chainId;
 
-    domain = {
+    const domain = {
       name: 'SecretHandler',
       version: '1',
       chainId: chainId,
       verifyingContract: verifyingContract.address
     };
 
-    types = {
+    const types = {
       Secret: [
         { name: 'id', type: 'uint256' },
         { name: 'message', type: 'bytes32' },
@@ -40,7 +43,7 @@ async function prepareSplitSignature(
       ]
     };
 
-    value = {
+    const value = {
         id: id,
         message: hashedSecret,
         blockNumber: blockNumber,
@@ -48,8 +51,8 @@ async function prepareSplitSignature(
         party2: party2.address
     }
 
-    signature = await signer._signTypedData(domain, types, value);
-    splitSignature = ethers.utils.splitSignature(signature);
+    const signature = await signer._signTypedData(domain, types, value);
+    const splitSignature = ethers.utils.splitSignature(signature);
 
     return splitSignature;
 }
