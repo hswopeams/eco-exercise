@@ -6,12 +6,11 @@ async function getHashedSecret(secretMessage, secretHandler) {
     let rando;
     [ , rando] = await ethers.getSigners();
     const salt = ethers.utils.randomBytes(32);
-    const saltHexValue = ethers.utils.hexlify(salt);
-    const hashedSecret = await secretHandler.connect(rando).hashSecret(secretMessage, saltHexValue);
+    const hashedSecret = await secretHandler.connect(rando).hashSecret(secretMessage, salt);
     
     return {
         hashedSecret: hashedSecret,
-        salt: saltHexValue
+        salt: salt
     }
 }
 

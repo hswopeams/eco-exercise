@@ -65,9 +65,7 @@ describe("SecretHandler", function () {
       it("should correctly generate a hash", async function () {
         secretBytes32 = ethers.utils.formatBytes32String("this is the secret");
         salt = ethers.utils.randomBytes(32);
-        const saltHexValue = ethers.utils.hexlify(salt);
-      
-        hashedSecret = await secretHandler.connect(rando).hashSecret(secretBytes32, saltHexValue);
+        hashedSecret = await secretHandler.connect(rando).hashSecret(secretBytes32, salt);
         expect(hashedSecret).to.not.equal(ethers.constants.HashZero);
       });
     });
@@ -387,7 +385,7 @@ describe("SecretHandler", function () {
       });
 
       it("should revert with the right error if revealed secret doesn't match committed secret -- different salt", async function () {
-        const differentSalt = ethers.utils.hexlify(ethers.utils.randomBytes(32));
+        const differentSalt = ethers.utils.randomBytes(32);
         await expect(
           secretHandler.connect(party2).revealSecret(
             secretBytes32, 
