@@ -1,15 +1,14 @@
 const {
-  time,
-  loadFixture,
+  mine
 } = require("@nomicfoundation/hardhat-network-helpers");
 const { anyValue } = require("@nomicfoundation/hardhat-chai-matchers/withArgs");
 const { expect, assert} = require("chai");
 const { ethers } = require("hardhat");
 const {keccak256, solidityPack, solidityKeccak256} = ethers.utils;
-const { BigNumber } = ethers.BigNumber;
+const BigNumber = ethers.BigNumber;
 const crypto = require('crypto');
 const { RevertReasons } = require("../util/revert-reasons.js");
-const { prepareSplitSignature, getHashedSecret } = require("../util/utils.js");
+const { prepareSplitSignature, getHashedSecret, getEvent } = require("../util/utils.js");
 const Secret = require("../../scripts/domain/Secret");
 
 describe("SecretHandler", function () {
@@ -17,7 +16,7 @@ describe("SecretHandler", function () {
    let secret, object, promoted, clone, dehydrated, rehydrated, key, secretStruct;
    let id, message, party1, party2, blockNumber;
    let secretHandler;
-   let nextSecretId, salt, hashedSecret, secretBytes32, chainId;
+   let nextSecretId, emittedSecretId, salt, hashedSecret, secretBytes32, chainId;
    let domain, types, value;
    let signature, splitSignature, r, s, v;
 
@@ -75,11 +74,11 @@ describe("SecretHandler", function () {
     });
   });
 
-  describe.only("commitSecret() ", function () {
+  describe("commitSecret() ", function () {
     beforeEach(async function () {
         secretBytes32 = ethers.utils.formatBytes32String("this is the secret");
-        hashedSecret = await getHashedSecret(secretBytes32, secretHandler);
-        id = await secretHandler.nextSecretId();
+        ({hashedSecret, salt} = await getHashedSecret(secretBytes32, secretHandler));
+        id = await secretHandler.nextSecretId(); 
 
         //Set blockNumber to 0 now. The actual blocknumber will be retrieved from the event
         splitSignature = await prepareSplitSignature(
@@ -283,43 +282,166 @@ describe("SecretHandler", function () {
 
         // Check that nextSecretId is incremented correctly
         expect(await secretHandler.connect(rando).nextSecretId()).to.equal(ethers.constants.Two);
-
-       
       });
     });
   });
   describe("revealSecret() ", function () {
-    describe("Revert", function () {
+    beforeEach(async function () {
+      secretBytes32 = ethers.utils.formatBytes32String("this is the secret");
+      ({hashedSecret, salt} = await getHashedSecret(secretBytes32, secretHandler));
+      id = await secretHandler.nextSecretId();
+
+      //Set blockNumber to 0 now. The actual blocknumber will be retrieved from the event
+      splitSignature = await prepareSplitSignature(
+        id,
+        hashedSecret,
+        ethers.constants.Zero,
+        party1,
+        party2,
+        secretHandler,
+        party2
+      )
+
+      // Create a valid secret object, then set fields in tests directly
+      secret = new Secret(id.toString(),  hashedSecret, "0", party1.address, party2.address);
+      expect(secret.isValid()).is.true;
+
+      const tx = await secretHandler.connect(party1).commitSecret(hashedSecret, party2.address, splitSignature.r, splitSignature.s, splitSignature.v);
+      const txReceipt = await tx.wait();
+      const event = getEvent(txReceipt, secretHandler, "SecretCommitted");
+      emittedSecretId = event.secretId;
+
+      // Make sure a block is mined because reveal should happen in a later block than commit
+      await mine();
+    })
+
+    describe("Reverts", function () {
+      it("should revert with the right error if secretId is invalid", async function () {
+        await expect(
+          secretHandler.connect(party1).revealSecret(
+            secretBytes32, 
+            salt, 
+            BigNumber.from(10))
+          ).to.be.revertedWith(
+            RevertReasons.INVALID_SECRET_ID
+          );
+      });
+
       it("should revert with the right error if caller is not party to the secret", async function () {
-      
+        await expect(
+          secretHandler.connect(rando).revealSecret(
+            secretBytes32, 
+            salt, 
+            emittedSecretId)
+          ).to.be.revertedWith(
+            RevertReasons.CALLER_NOT_PARTY
+          );
       });
 
-
-      it("should revert with the right error if reveal is not called at a later block", async function () {
-        
+      it("should revert with the right error if salt is invalid", async function () {
+        await expect(
+          secretHandler.connect(party1).revealSecret(
+            secretBytes32, 
+            ethers.utils.hexZeroPad("0x", 32), 
+            emittedSecretId)
+          ).to.be.revertedWith(
+            RevertReasons.INVALID_SALT
+          );
       });
 
-      it("should revert with the right error if provided party did not sign the transaction", async function () {
-       
+      it("should revert with the right error if secret is invalid", async function () {
+        await expect(
+          secretHandler.connect(party2).revealSecret(
+            ethers.utils.hexZeroPad("0x", 32), 
+            salt, 
+            emittedSecretId)
+          ).to.be.revertedWith(
+            RevertReasons.INVALID_SECRET
+          );
+      });
+
+      it("should revert with the right error if revealed secret doesn't match committed secret -- different secret message", async function () {
+        const differentSecretBytes32 = ethers.utils.formatBytes32String("this is not the secret");
+        await expect(
+          secretHandler.connect(party2).revealSecret(
+            differentSecretBytes32, 
+            salt, 
+            emittedSecretId)
+          ).to.be.revertedWith(
+            RevertReasons.SECRETS_DO_NOT_MATCH
+          );
+      });
+
+      it("should revert with the right error if revealed secret doesn't match committed secret -- different salt", async function () {
+        const differentSalt = ethers.utils.hexlify(ethers.utils.randomBytes(32));
+        await expect(
+          secretHandler.connect(party2).revealSecret(
+            secretBytes32, 
+            differentSalt, 
+            emittedSecretId)
+          ).to.be.revertedWith(
+            RevertReasons.SECRETS_DO_NOT_MATCH
+          );
       });
 
      
     });
 
     describe("Events", function () {
-      it("should emit an event on reveal", async function () {
-       
+      it("should emit an event on reveal when revealed by party1", async function () {
+        const tx = await secretHandler.connect(party1).revealSecret(secretBytes32, salt, emittedSecretId);
+        
+        await expect(tx)
+          .to.emit(secretHandler, "SecretRevealed")
+          .withArgs(emittedSecretId , secretBytes32, party1.address); 
       });
-    });
 
+      it("should emit an event on reveal when revealed by party2", async function () {
+        const tx = await secretHandler.connect(party2).revealSecret(secretBytes32, salt, emittedSecretId);
+        
+        await expect(tx)
+          .to.emit(secretHandler, "SecretRevealed")
+          .withArgs(emittedSecretId , secretBytes32, party2.address); 
+      });
+       
+    });
+   
     describe("State", function () {
-      it("should change state correctly", async function () {
-      
+      it("should change state correctly when called by party1", async function () {
+        const tx = await secretHandler.connect(party1).revealSecret(secretBytes32, salt, emittedSecretId);
+        secretStruct = await secretHandler.connect(rando).secrets(id);
+
+        // Set expected secret to empty values
+        expectedSecret = new Secret("0",  ethers.constants.HashZero, "0", ethers.constants.AddressZero, ethers.constants.AddressZero);
+
+        // Parse into entity
+        let returnedSecret = Secret.fromStruct(secretStruct);
+
+        // Returned values should match expected
+        for ([key, value] of Object.entries(expectedSecret)) {
+          expect(JSON.stringify(returnedSecret[key]) === JSON.stringify(value)).is.true;
+        }
+      });
+
+      it("should change state correctly when called by party2", async function () {
+        const tx = await secretHandler.connect(party2).revealSecret(secretBytes32, salt, emittedSecretId);
+        secretStruct = await secretHandler.connect(rando).secrets(id);
+
+        // Set expected secret to empty values
+        expectedSecret = new Secret("0",  ethers.constants.HashZero, "0", ethers.constants.AddressZero, ethers.constants.AddressZero);
+
+        // Parse into entity
+        let returnedSecret = Secret.fromStruct(secretStruct);
+
+        // Returned values should match expected
+        for ([key, value] of Object.entries(expectedSecret)) {
+          expect(JSON.stringify(returnedSecret[key]) === JSON.stringify(value)).is.true;
+        }
       });
     });
   });
   describe("pause() ", function () {
-    describe("Revert", function () {
+    describe("Reverts", function () {
       it("should revert with the right error if caller is not party to the secret", async function () {
        
       });
@@ -349,7 +471,7 @@ describe("SecretHandler", function () {
     });
   });
   describe("unpause() ", function () {
-    describe("Revert", function () {
+    describe("Reverts", function () {
       it("should revert with the right error if caller is not party to the secret", async function () {
       
       });
@@ -379,7 +501,7 @@ describe("SecretHandler", function () {
     });
   });
   describe("kill() ", function () {
-    describe("Revert", function () {
+    describe("Reverts", function () {
       it("should revert with the right error if caller is not party to the secret", async function () {
        
       });
@@ -399,36 +521,6 @@ describe("SecretHandler", function () {
     describe("Events", function () {
       it("should emit an event on reveal", async function () {
        
-      });
-    });
-
-    describe("State", function () {
-      it("should change state correctly", async function () {
-      
-      });
-    });
-  });
-  describe("revealSecret() ", function () {
-    describe("Revert", function () {
-      it("should revert with the right error if caller is not party to the secret", async function () {
-       
-      });
-
-
-      it("should revert with the right error if reveal is not called at a later block", async function () {
-        
-      });
-
-      it("should revert with the right error if provided party did not sign the transaction", async function () {
-       
-      });
-
-     
-    });
-
-    describe("Events", function () {
-      it("should emit an event on reveal", async function () {
-        
       });
     });
 
