@@ -1,9 +1,30 @@
 {
-  "name": "hardhat-project",
+  "name": "secret-handler",
+  "version": "1.0.0",
+  "description": "Two parties can commit and reveal an agreed-upon secet",
+  "author": "Heather Swope",
+  "license": "GPL-3.0-or-later",
+  "scripts": {
+    "build": "npx hardhat compile",
+    "test": "npx hardhat test",
+    "size": "npx hardhat size-contracts",
+    "coverage": "npx hardhat coverage",
+    "check:contracts": "npx solhint 'contracts/**/*.sol' && prettier --list-different contracts/**",
+    "tidy:contracts": "npx solhint --fix contracts/**/*.sol && prettier --write contracts/**",
+    "check:scripts": "eslint test/** scripts/** '*.js' && prettier --list-different test/** scripts/** '*.js'",
+    "tidy:scripts": "eslint --fix test/** scripts/** '*.js' && prettier --write test/** scripts/** '*.js'"
+  },
   "devDependencies": {
     "@nomicfoundation/hardhat-toolbox": "^2.0.1",
+    "dotenv": "^16.0.3",
     "eip55": "^2.1.0",
-    "hardhat": "^2.12.7"
+    "eslint": "^8.34.0",
+    "eslint-config-prettier": "^8.6.0",
+    "hardhat": "^2.12.7",
+    "hardhat-contract-sizer": "^2.8.0",
+    "prettier": "^2.8.4",
+    "prettier-plugin-solidity": "^1.1.2",
+    "solhint": "^3.4.0"
   },
   "dependencies": {
     "@openzeppelin/contracts": "^4.8.1"
