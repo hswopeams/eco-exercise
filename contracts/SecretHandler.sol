@@ -77,7 +77,7 @@ contract SecretHandler is Constants, Ownable, Pausable, EIP712("SecretHandler", 
         bytes32 digest = _hashTypedDataV4(
             keccak256(
                 abi.encode(
-                    keccak256("Secret(uint256 id,bytes32 message,uint256 blockNumber,address party1,address party2)"),
+                    SECRET_TYPEHASH,
                     secretId,
                     hashedSecret,
                     0, // Will be set in this function

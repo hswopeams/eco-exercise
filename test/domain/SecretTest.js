@@ -3,7 +3,6 @@ const ethers = hre.ethers;
 const {keccak256, solidityKeccak256} = ethers.utils;
 const toUtf8Bytes = ethers.utils.toUtf8Bytes;
 const { expect } = require("chai");
-const crypto = require('crypto');
 const Secret = require("../../scripts/domain/Secret");
 
 /**
@@ -18,12 +17,12 @@ describe("Secret", function () {
     beforeEach(async function () {
       // Get a list of accounts
       accounts = await ethers.getSigners();
-    
+
       // Required constructor params
       id = "1";
       message = solidityKeccak256(
           ['bytes32', 'bytes32'],
-          [ethers.utils.formatBytes32String("this is a secret"), crypto.randomBytes(32)]
+          [ethers.utils.formatBytes32String("this is a secret"), ethers.utils.randomBytes(32)]
       );
       party1 = accounts[1].address;
       party2 = accounts[2].address;
@@ -51,7 +50,7 @@ describe("Secret", function () {
       id = "1";
       message = solidityKeccak256(
         ['bytes32', 'bytes32'],
-        [ethers.utils.formatBytes32String("this is a secret"), crypto.randomBytes(32)]
+        [ethers.utils.formatBytes32String("this is a secret"), ethers.utils.randomBytes(32)]
       );
       party1 = accounts[1].address;
       party2 = accounts[2].address;
@@ -101,7 +100,7 @@ describe("Secret", function () {
        // Valid field value
        secret.message = solidityKeccak256(
         ['bytes32', 'bytes32'],
-        [ethers.utils.formatBytes32String("this is a secret"), crypto.randomBytes(32)]
+        [ethers.utils.formatBytes32String("this is a secret"), ethers.utils.randomBytes(32)]
       );
        expect(secret.messageIsValid()).is.true;
        expect(secret.isValid()).is.true;

@@ -12,10 +12,14 @@
     "check:contracts": "npx solhint 'contracts/**/*.sol' && prettier --list-different contracts/**",
     "tidy:contracts": "npx solhint --fix contracts/**/*.sol && prettier --write contracts/**",
     "check:scripts": "eslint test/** scripts/** '*.js' && prettier --list-different test/** scripts/** '*.js'",
-    "tidy:scripts": "eslint --fix test/** scripts/** '*.js' && prettier --write test/** scripts/** '*.js'"
+    "tidy:scripts": "eslint --fix test/** scripts/** '*.js' && prettier --write test/** scripts/** '*.js'",
+    "deploy:hardhat": "npx hardhat clean && npx hardhat compile && npx hardhat run scripts/deploy.js --network hardhat",
+    "deploy:localhost": "npx hardhat clean && npx hardhat compile && npx hardhat run scripts/deploy.js --network localhost",
+    "deploy:mumbai": "npx hardhat clean && npx hardhat compile && npx hardhat run scripts/deploy.js --network mumbai"
   },
   "devDependencies": {
     "@nomicfoundation/hardhat-toolbox": "^2.0.1",
+    "@nomiclabs/hardhat-etherscan": "^3.1.6",
     "dotenv": "^16.0.3",
     "eip55": "^2.1.0",
     "eslint": "^8.34.0",
