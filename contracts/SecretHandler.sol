@@ -5,6 +5,7 @@ pragma solidity 0.8.17;
 import "./Constants.sol";
 import "./Killable.sol";
 import "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
+import "hardhat/console.sol";
 
 /**
  * @title SecretHandler
@@ -66,7 +67,7 @@ contract SecretHandler is Killable, EIP712("SecretHandler", "1") {
 
         // Verify that party2 signed the message before storing secret
         bytes32 digest = _hashTypedDataV4(keccak256(abi.encode(
-            keccak256("Secret(uint256 id,bytes32 message,uint256 blockNumber,address party1, address party2)"),
+            keccak256("Secret(uint256 id,bytes32 message,uint256 blockNumber,address party1,address party2)"),
             secretId,
             hashedSecret,
             0, // Will be set in this function
@@ -76,12 +77,12 @@ contract SecretHandler is Killable, EIP712("SecretHandler", "1") {
 
         address signer = ECDSA.recover(digest, sigV, sigR, sigS);
 
-        require(signer != address(0), INVALID_SIGNATURE);
+        // ECDSA.recover checks for signer == address(0)) and reverts
         require(signer == party2, SIGNER_AND_SIGNATURE_DO_NOT_MATCH);
 
         // Store secret
         Secret memory secret = Secret({id: secretId, message: hashedSecret, blockNumber: block.number, party1: msg.sender, party2: party2});
-        secrets[nextSecretId] = secret;
+        secrets[secretId] = secret;
        
         emit SecretCommitted(secretId, secret, msg.sender);
     }
@@ -112,7 +113,7 @@ contract SecretHandler is Killable, EIP712("SecretHandler", "1") {
         require(salt != bytes32(0), INVALID_SALT);
         require(plainSecret != bytes32(0), INVALID_SECRET);
         require(hashSecret(plainSecret, salt) == secret.message, SECRETS_DO_NOT_MATCH);
-
+      
         emit SecretRevealed(secretId, plainSecret, msg.sender);
 
         delete secrets[secretId];
@@ -128,6 +129,9 @@ contract SecretHandler is Killable, EIP712("SecretHandler", "1") {
     function hashSecret(bytes32 plainSecret, bytes32 salt) public view returns (bytes32 hashedSecret) {
         require(salt != bytes32(0), INVALID_SALT);
         require(plainSecret != bytes32(0), INVALID_SECRET);
+       
         hashedSecret = keccak256(abi.encodePacked(address(this), plainSecret, salt));
+        //console.log("hashedSecret in hashSecret ");
+        //console.logBytes32(hashedSecret);
     } 
 }
