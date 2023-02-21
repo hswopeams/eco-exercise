@@ -3,17 +3,19 @@
 pragma solidity 0.8.17;
 
 import "./Constants.sol";
-import "./Killable.sol";
+import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
+import { Pausable } from "@openzeppelin/contracts/security/Pausable.sol";
 import "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
-import "hardhat/console.sol";
 
 /**
  * @title SecretHandler
  * @author Heather Swope
  *
- * @notice Provides functionality allowing two parties to commit to a secret they agree on and to reveal that secret.
+ * @notice Provides functionality allowing two parties to commit to a secret they agree on.
+ *         Either party can reveal the secret in a later block. The hashSecret function
+ *         must be used to encrypt the secret so that it cannot be viewed on the blockchain.
  */
-contract SecretHandler is Killable, EIP712("SecretHandler", "1") {
+contract SecretHandler is Constants, Ownable, Pausable, EIP712("SecretHandler", "1") {
     struct Secret {
         uint256 id;
         bytes32 message;
@@ -28,7 +30,6 @@ contract SecretHandler is Killable, EIP712("SecretHandler", "1") {
     event SecretCommitted(uint256 indexed secretId, Secret secret, address indexed executedBy);
     event SecretRevealed(uint256 indexed secretId, bytes32 plainSecret, address indexed executedBy);
 
-
     /**
      * @notice Constructor
      * @dev Sets initial counter value;
@@ -38,11 +39,13 @@ contract SecretHandler is Killable, EIP712("SecretHandler", "1") {
     }
 
     /**
-     * @notice Commits a secret that has been agreed upon by two parties. Either party can call this function, but the caller is assumed to be party1 in the signed struct. 
-     * The transaction must be signed by the party2.
-     * @dev Since the structured data being signed includes both parties' addresses, only 1 signature is required. This saves the gas it could take to verify two
-     * signatures.
-     * 
+     * @notice Commits a secret that has been agreed on by two parties. Either party can call this function,
+     * but the caller is assumed to be party1 in the signed struct. The transaction must be signed by party2.
+     * The caller must call hashSecret first to generate an encrypted secret.
+     *
+     * @dev Since the structured data being signed includes both parties' addresses, only 1 signature is required.
+     * This saves the approximately 8,300 gas it would take to verify a second signature.
+     *
      * Emits a SecretCommitted event if successful.
      *
      * Reverts if:
@@ -50,78 +53,99 @@ contract SecretHandler is Killable, EIP712("SecretHandler", "1") {
      * - Party2 is the zero address
      * - Address of the recovered signer is the zero address
      * - Address of the recovered signer is not the same as party2 address
-     * 
-     * @dev The caller should call hashSecret first to generate a secret that is not in plain text.
-     * @param hashedSecret the hash of a message, both parties' addresses, a secretId, and a salt
+     *
+     * @param hashedSecret the hash of: a message, a salt, and the contract address
      * @param party2 the address of party 2
      * @param sigR - r part of party2's signature
      * @param sigS - s part of party2's signature
      * @param sigV - v part of party2's signature
      */
-    function commitSecret(bytes32 hashedSecret, address party2, bytes32 sigR, bytes32 sigS, uint8 sigV) external { 
-        require(hashedSecret !=  bytes32(0), INVALID_SECRET);
+    function commitSecret(
+        bytes32 hashedSecret,
+        address party2,
+        bytes32 sigR,
+        bytes32 sigS,
+        uint8 sigV
+    ) external whenNotPaused {
+        require(hashedSecret != bytes32(0), INVALID_SECRET);
         require(party2 != address(0), INVALID_ADDRESS);
 
-        //Assgin secret Id and increment
-        uint256 secretId =  nextSecretId++;
+        // Assign secret Id and increment
+        uint256 secretId = nextSecretId++;
 
         // Verify that party2 signed the message before storing secret
-        bytes32 digest = _hashTypedDataV4(keccak256(abi.encode(
-            keccak256("Secret(uint256 id,bytes32 message,uint256 blockNumber,address party1,address party2)"),
-            secretId,
-            hashedSecret,
-            0, // Will be set in this function
-            msg.sender,
-            party2)
-        ));
+        bytes32 digest = _hashTypedDataV4(
+            keccak256(
+                abi.encode(
+                    keccak256("Secret(uint256 id,bytes32 message,uint256 blockNumber,address party1,address party2)"),
+                    secretId,
+                    hashedSecret,
+                    0, // Will be set in this function
+                    msg.sender,
+                    party2
+                )
+            )
+        );
 
         address signer = ECDSA.recover(digest, sigV, sigR, sigS);
 
         // ECDSA.recover checks for signer == address(0)) and reverts
         require(signer == party2, SIGNER_AND_SIGNATURE_DO_NOT_MATCH);
 
+        // Set values
+        Secret memory secret = Secret({
+            id: secretId,
+            message: hashedSecret,
+            blockNumber: block.number,
+            party1: msg.sender,
+            party2: party2
+        });
+
         // Store secret
-        Secret memory secret = Secret({id: secretId, message: hashedSecret, blockNumber: block.number, party1: msg.sender, party2: party2});
         secrets[secretId] = secret;
-       
         emit SecretCommitted(secretId, secret, msg.sender);
     }
 
     /**
-     * @notice Reveals secret if called by one of the two parties to the secret and called in a block later than the commit transaction block.
-     * @dev Deletes secret. Calls hashSecret to make sure revealed secret matches committed secret.
-     * 
-     * Emits an SecretRevealed event if successful.
+     * @notice Reveals secret if called by one of the two parties to the secret and called in a block later
+     * than the commit transaction block.
+     *
+     * @dev Calls hashSecret to make sure revealed secret matches committed secret. Deletes secret.
+     *
+     * Emits a SecretRevealed event if successful.
      *
      * Reverts if:
+     * - Secret Id is invalid
      * - The caller is not one of the parties to the secret
      * - Current block number is not later than the block number in which the secret was committed
      * - Salt is empty
-     * - Plain message is empty
-     * - Secret Id is invalid
-     * - Plain message passed in does not match the commited secret message
-     * 
+     * - Plain secret is empty
+     * - Plain secret passed in with salt does not match the commited secret message
+     *
      * @param plainSecret - the plain text secret
      * @param salt -  salt generated by calling application
      * @param secretId Id of the stored secret
      */
-    function revealSecret(bytes32 plainSecret, bytes32 salt, uint secretId) external {
+    function revealSecret(bytes32 plainSecret, bytes32 salt, uint secretId) external whenNotPaused {
         Secret memory secret = secrets[secretId];
         require(secret.id >= 1, INVALID_SECRET_ID); // Make sure there was actually a secret stored for this Id
         require(msg.sender == secret.party1 || msg.sender == secret.party2, CALLER_NOT_PARTY);
-        require(block.timestamp > secret.blockNumber, REVEAL_TOO_SOON );
+        require(block.number > secret.blockNumber, REVEAL_TOO_SOON);
         require(salt != bytes32(0), INVALID_SALT);
         require(plainSecret != bytes32(0), INVALID_SECRET);
         require(hashSecret(plainSecret, salt) == secret.message, SECRETS_DO_NOT_MATCH);
-      
-        emit SecretRevealed(secretId, plainSecret, msg.sender);
 
+        emit SecretRevealed(secretId, plainSecret, msg.sender);
         delete secrets[secretId];
     }
 
     /**
-     * @notice Generate hash of plain text secret+ a salt passed in + contract address. This function keeps the secret private onchain.
-     * Several components are used in the hash to mininimize the possibility of collisions with other parties or contract instances using the same plainSecret.
+     * @notice Generates hash of plain text secret + a salt passed in + contract address.
+     * This function keeps the secret private onchain.
+     *
+     * @dev Multiple components are used in the hasing function h to mininimize the possibility of collisions
+     * with other parties or contract instances using the same plainSecret.
+     *
      * @param plainSecret - the plaintext secret message
      * @param salt salt generated by calling aplication
      * @return hashedSecret the hashed secret
@@ -129,9 +153,28 @@ contract SecretHandler is Killable, EIP712("SecretHandler", "1") {
     function hashSecret(bytes32 plainSecret, bytes32 salt) public view returns (bytes32 hashedSecret) {
         require(salt != bytes32(0), INVALID_SALT);
         require(plainSecret != bytes32(0), INVALID_SECRET);
-       
         hashedSecret = keccak256(abi.encodePacked(address(this), plainSecret, salt));
-        //console.log("hashedSecret in hashSecret ");
-        //console.logBytes32(hashedSecret);
-    } 
+    }
+
+    /**
+     * @dev Triggers stopped state.
+     *
+     * Requirements:
+     *
+     * - The contract must not be paused.
+     */
+    function pause() external onlyOwner {
+        _pause();
+    }
+
+    /**
+     * @dev Returns to normal state.
+     *
+     * Requirements:
+     *
+     * - The contract must be paused.
+     */
+    function unpause() external onlyOwner {
+        _unpause();
+    }
 }
