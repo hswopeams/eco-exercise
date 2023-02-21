@@ -14,7 +14,8 @@ async function prepareSplitSignature(
     blockNumber,
     party1,
     party2,
-    verifyingContract
+    verifyingContract,
+    signer
 ) {
     const chainId = (await ethers.provider.getNetwork()).chainId;
 
@@ -34,6 +35,7 @@ async function prepareSplitSignature(
         { name: 'party2', type: 'address' }
       ]
     };
+    
     value = {
         id: id,
         message: hashedSecret,
@@ -42,7 +44,7 @@ async function prepareSplitSignature(
         party2: party2.address
     }
 
-    signature = await party2._signTypedData(domain, types, value);
+    signature = await signer._signTypedData(domain, types, value);
     splitSignature = ethers.utils.splitSignature(signature);
 
     return splitSignature;

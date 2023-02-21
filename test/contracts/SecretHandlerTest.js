@@ -75,7 +75,7 @@ describe("SecretHandler", function () {
     });
   });
 
-  describe("commitSecret() ", function () {
+  describe.only("commitSecret() ", function () {
     beforeEach(async function () {
         secretBytes32 = ethers.utils.formatBytes32String("this is the secret");
         hashedSecret = await getHashedSecret(secretBytes32, secretHandler);
@@ -88,7 +88,8 @@ describe("SecretHandler", function () {
           ethers.constants.Zero,
           party1,
           party2,
-          secretHandler
+          secretHandler,
+          party2
         )
 
         // Create a valid secret object, then set fields in tests directly
@@ -99,7 +100,7 @@ describe("SecretHandler", function () {
         const secretStruct = secret.toStruct();
 
     })
-    describe("Revert", function () {
+    describe("Reverts", function () {
       it("should revert with the right error if party2 address is invalid", async function () {
         await expect(
           secretHandler.connect(party1).commitSecret(
@@ -113,31 +114,133 @@ describe("SecretHandler", function () {
           );
       });
 
-      it.only("should revert with the right error if secret message is invalid", async function () {
-        secretBytes32 = ethers.utils.hexZeroPad("0x", 32)
-        const invalidHashedSecret = await getHashedSecret(secretBytes32, secretHandler);
-        
+      it("should revert with the right error if secret message is invalid", async function () {
         await expect(
           secretHandler.connect(party1).commitSecret(
-            invalidHashedSecret, 
+            ethers.utils.hexZeroPad("0x", 32), 
             party2.address, 
             splitSignature.r, 
             splitSignature.s, 
             splitSignature.v)
           ).to.be.revertedWith(
             RevertReasons.INVALID_SECRET
-          );
-       
+          );   
       });
 
-      it("should revert with the right error if provided party2 did not sign the transaction", async function () {
-       
+      it("should revert with the right error if party1 signed the transaction", async function () {
+        //Sign with party1
+        splitSignature = await prepareSplitSignature(
+          id,
+          hashedSecret,
+          ethers.constants.Zero,
+          party1,
+          party2,
+          secretHandler,
+          party1
+        )
+
+        await expect(
+          secretHandler.connect(party1).commitSecret(
+            hashedSecret, 
+            party2.address, 
+            splitSignature.r, 
+            splitSignature.s, 
+            splitSignature.v)
+          ).to.be.revertedWith(
+            RevertReasons.SIGNER_AND_SIGNATURE_DO_NOT_MATCH
+          );
+      });
+
+      it("should revert with the right error if a third party signed the transaction", async function () {
+        //Sign with a third party signer
+        splitSignature = await prepareSplitSignature(
+          id,
+          hashedSecret,
+          ethers.constants.Zero,
+          party1,
+          party2,
+          secretHandler,
+          rando
+        )
+
+        await expect(
+          secretHandler.connect(party1).commitSecret(
+            hashedSecret, 
+            party2.address, 
+            splitSignature.r, 
+            splitSignature.s, 
+            splitSignature.v)
+          ).to.be.revertedWith(
+            RevertReasons.SIGNER_AND_SIGNATURE_DO_NOT_MATCH
+          );
       });
 
       it("should revert with the right error if msg.sender is not part of the signed Secret struct signed by party2", async function () {
-       
+        await expect(
+          secretHandler.connect(rando).commitSecret(
+            hashedSecret, 
+            party2.address, 
+            splitSignature.r, 
+            splitSignature.s, 
+            splitSignature.v)
+          ).to.be.revertedWith(
+            RevertReasons.SIGNER_AND_SIGNATURE_DO_NOT_MATCH
+          );
       });
-     
+
+      it("should revert with the right error if domain separator in signature is incorrect", async function () {
+        domain = {
+          name: 'SecretHandler',
+          version: '1',
+          chainId: 1, // Wrong Chain Id
+          verifyingContract: secretHandler.address
+        };
+    
+        types = {
+          Secret: [
+            { name: 'id', type: 'uint256' },
+            { name: 'message', type: 'bytes32' },
+            { name: 'blockNumber', type: 'uint256' },
+            { name: 'party1', type: 'address' },
+            { name: 'party2', type: 'address' }
+          ]
+        };
+
+        value = {
+            id: id,
+            message: hashedSecret,
+            blockNumber: ethers.constants.Zero,
+            party1: party1.address,
+            party2: party2.address
+        }
+
+        signature = await party2._signTypedData(domain, types, value);
+        splitSignature = ethers.utils.splitSignature(signature);
+       
+        await expect(
+          secretHandler.connect(party1).commitSecret(
+            hashedSecret, 
+            party2.address, 
+            splitSignature.r, 
+            splitSignature.s, 
+            splitSignature.v)
+          ).to.be.revertedWith(
+            RevertReasons.SIGNER_AND_SIGNATURE_DO_NOT_MATCH
+          );
+      });
+
+      it("should revert with the right error if recovered signer is the zero address", async function () {
+        await expect(
+          secretHandler.connect(party1).commitSecret(
+            hashedSecret, 
+            party2.address, 
+            splitSignature.r, 
+            splitSignature.s, 
+            "0") // Invalid v signature component
+          ).to.be.revertedWith(
+            RevertReasons.ECDSA_INVALID_SIGNATURE
+          );
+      }); 
     });
 
     describe("Events", function () {
@@ -160,6 +263,27 @@ describe("SecretHandler", function () {
 
     describe("State", function () {
       it("should change state correctly", async function () {
+        // Check that secret is stored correctly
+        const expectedSecret = secret.clone();
+
+        const tx = await secretHandler.connect(party1).commitSecret(hashedSecret, party2.address, splitSignature.r, splitSignature.s, splitSignature.v);
+        secretStruct = await secretHandler.connect(rando).secrets(id);
+
+        // Set expected blockNumber
+        expectedSecret.blockNumber = tx.blockNumber.toString();
+        expect(expectedSecret.isValid()).is.true;
+
+        // Parse into entity
+        let returnedSecret = Secret.fromStruct(secretStruct);
+
+        // Returned values should match expected
+        for ([key, value] of Object.entries(expectedSecret)) {
+          expect(JSON.stringify(returnedSecret[key]) === JSON.stringify(value)).is.true;
+        }
+
+        // Check that nextSecretId is incremented correctly
+        expect(await secretHandler.connect(rando).nextSecretId()).to.equal(ethers.constants.Two);
+
        
       });
     });
