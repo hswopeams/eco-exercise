@@ -13,5 +13,8 @@ exports.RevertReasons = {
   SECRETS_DO_NOT_MATCH: "Revealed secret does not match committed secret",
 
   // Revert Reasons from imports
-  ECDSA_INVALID_SIGNATURE: "ECDSA: invalid signature"
+  ECDSA_INVALID_SIGNATURE: "ECDSA: invalid signature",
+  NOT_OWNER: "Ownable: caller is not the owner",
+  PAUSED: "Pausable: paused",
+  NOT_PAUSED: "Pausable: not paused",
 };

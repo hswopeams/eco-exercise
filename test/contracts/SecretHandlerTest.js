@@ -33,14 +33,17 @@ describe("SecretHandler", function () {
   })
 
   describe("Deployment", function () {
-    it("should set the right Id", async function () {
+    it("should set the right nextSecretId value", async function () {
       expect(await secretHandler.connect(rando).nextSecretId()).to.equal(nextSecretId);
     });
 
+    it("should be deployed in the unpaused state", async function () {
+      expect(await secretHandler.connect(rando).paused()).to.be.false;
+    });
   });
 
   describe("hashSecret()", function () {
-    context("Revert", function () {
+    context("Reverts", function () {
       it("should revert with the right error if salt is invalid", async function () {
         secretBytes32 = ethers.utils.formatBytes32String("this is the secret");
         salt = ethers.utils.hexZeroPad("0x", 32)
@@ -58,8 +61,6 @@ describe("SecretHandler", function () {
           RevertReasons.INVALID_SECRET
         );
       });
-
-
     });
 
     context("Generate valid hash", function () {
@@ -99,7 +100,8 @@ describe("SecretHandler", function () {
         const secretStruct = secret.toStruct();
 
     })
-    describe("Reverts", function () {
+
+    context("Reverts", function () {
       it("should revert with the right error if party2 address is invalid", async function () {
         await expect(
           secretHandler.connect(party1).commitSecret(
@@ -240,9 +242,23 @@ describe("SecretHandler", function () {
             RevertReasons.ECDSA_INVALID_SIGNATURE
           );
       }); 
+
+      it("should revert with the right error if paused", async function () {
+        await secretHandler.connect(owner).pause()
+        await expect(
+          secretHandler.connect(party1).commitSecret(
+            hashedSecret, 
+            party2.address, 
+            splitSignature.r, 
+            splitSignature.s, 
+            splitSignature.v) 
+          ).to.be.revertedWith(
+            RevertReasons.PAUSED
+          );
+      }); 
     });
 
-    describe("Events", function () {
+    context("Events", function () {
       it("should emit an event on commit", async function () {
         const tx = await secretHandler.connect(party1).commitSecret(hashedSecret, party2.address, splitSignature.r, splitSignature.s, splitSignature.v);
 
@@ -260,7 +276,7 @@ describe("SecretHandler", function () {
       });
     });
 
-    describe("State", function () {
+    context("State", function () {
       it("should change state correctly", async function () {
         // Check that secret is stored correctly
         const expectedSecret = secret.clone();
@@ -315,7 +331,7 @@ describe("SecretHandler", function () {
       await mine();
     })
 
-    describe("Reverts", function () {
+    context("Reverts", function () {
       it("should revert with the right error if secretId is invalid", async function () {
         await expect(
           secretHandler.connect(party1).revealSecret(
@@ -384,10 +400,20 @@ describe("SecretHandler", function () {
           );
       });
 
-     
+      it("should revert with the right error if paused", async function () {
+        await secretHandler.connect(owner).pause()
+        await expect(
+          secretHandler.connect(party2).revealSecret(
+            secretBytes32, 
+            salt, 
+            emittedSecretId)
+          ).to.be.revertedWith(
+            RevertReasons.PAUSED
+          );
+      }); 
     });
 
-    describe("Events", function () {
+    context("Events", function () {
       it("should emit an event on reveal when revealed by party1", async function () {
         const tx = await secretHandler.connect(party1).revealSecret(secretBytes32, salt, emittedSecretId);
         
@@ -403,10 +429,9 @@ describe("SecretHandler", function () {
           .to.emit(secretHandler, "SecretRevealed")
           .withArgs(emittedSecretId , secretBytes32, party2.address); 
       });
-       
     });
    
-    describe("State", function () {
+    context("State", function () {
       it("should change state correctly when called by party1", async function () {
         const tx = await secretHandler.connect(party1).revealSecret(secretBytes32, salt, emittedSecretId);
         secretStruct = await secretHandler.connect(rando).secrets(id);
@@ -440,93 +465,76 @@ describe("SecretHandler", function () {
       });
     });
   });
+
   describe("pause() ", function () {
-    describe("Reverts", function () {
-      it("should revert with the right error if caller is not party to the secret", async function () {
-       
+    context("Reverts", function () {
+      it("should revert with the right error if caller is not owner", async function () {
+        await expect(
+          secretHandler.connect(rando).pause()
+          ).to.be.revertedWith(
+            RevertReasons.NOT_OWNER
+          );
       });
 
-
-      it("should revert with the right error if reveal is not called at a later block", async function () {
-        
-      });
-
-      it("should revert with the right error if provided party did not sign the transaction", async function () {
-       
-      });
-
-     
+      it("should revert with the right error if already paused", async function () {
+        await secretHandler.connect(owner).pause();
+        await expect(
+          secretHandler.connect(owner).pause()
+          ).to.be.revertedWith(
+            RevertReasons.PAUSED
+          );
+      });     
     });
 
-    describe("Events", function () {
-      it("should emit an event on reveal", async function () {
-       
+    context("Events", function () {
+      it("should emit an event when owner pauses the contract", async function () {
+        await expect(secretHandler.connect(owner).pause())
+          .to.emit(secretHandler, "Paused")
+          .withArgs(owner.address); 
       });
     });
 
-    describe("State", function () {
+    context("State", function () {
       it("should change state correctly", async function () {
-      
+        await secretHandler.connect(owner).pause();
+        expect(await secretHandler.connect(rando).paused()).to.be.true;
       });
     });
   });
+
   describe("unpause() ", function () {
-    describe("Reverts", function () {
-      it("should revert with the right error if caller is not party to the secret", async function () {
-      
+    context("Reverts", function () {
+      it("should revert with the right error if caller is not owner", async function () {
+        await expect(
+          secretHandler.connect(rando).unpause()
+          ).to.be.revertedWith(
+            RevertReasons.NOT_OWNER
+          );
       });
 
-
-      it("should revert with the right error if reveal is not called at a later block", async function () {
-        
-      });
-
-      it("should revert with the right error if provided party did not sign the transaction", async function () {
-       
-      });
-
-     
-    });
-
-    describe("Events", function () {
-      it("should emit an event on reveal", async function () {
-       
+      it("should revert with the right error if not paused", async function () {
+        await expect(
+          secretHandler.connect(owner).unpause()
+          ).to.be.revertedWith(
+            RevertReasons.NOT_PAUSED
+          );
       });
     });
 
-    describe("State", function () {
+    context("Events", function () {
+      it("should emit an event when owner unpauses the contract", async function () {
+        await secretHandler.connect(owner).pause();
+        await expect(secretHandler.connect(owner).unpause())
+          .to.emit(secretHandler, "Unpaused")
+          .withArgs(owner.address); 
+      });
+    });
+
+    context("State", function () {
       it("should change state correctly", async function () {
-      
-      });
-    });
-  });
-  describe("kill() ", function () {
-    describe("Reverts", function () {
-      it("should revert with the right error if caller is not party to the secret", async function () {
-       
-      });
-
-
-      it("should revert with the right error if reveal is not called at a later block", async function () {
-        
-      });
-
-      it("should revert with the right error if provided party did not sign the transaction", async function () {
-       
-      });
-
-     
-    });
-
-    describe("Events", function () {
-      it("should emit an event on reveal", async function () {
-       
-      });
-    });
-
-    describe("State", function () {
-      it("should change state correctly", async function () {
-      
+        await secretHandler.connect(owner).pause();
+        await secretHandler.connect(owner).unpause();
+        expect(await secretHandler.connect(rando).paused()).to.be.false;
       });
     });
   });
