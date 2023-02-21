@@ -5,22 +5,51 @@
 // will compile your contracts, add the Hardhat Runtime Environment's members to the
 // global scope, and execute the script.
 const hre = require("hardhat");
+const network = hre.network.name;
+const tipMultiplier = hre.ethers.BigNumber.from(process.env.TIP_MULTIPLIER);
+const tipSuggestion = "1500000000"; // ethers.js always returns this constant, it does not vary per block
+const maxPriorityFeePerGas = hre.ethers.BigNumber.from(tipSuggestion).mul(tipMultiplier);
+const confirmations = network == "hardhat" ? 1 : process.env.CONFIRMATIONS;
+const { getFees } = require("./util/utils");
+
+async function deployContracts() {
+  const SecretHandler = await hre.ethers.getContractFactory("SecretHandler");
+  const secretHandler = await SecretHandler.deploy(await getFees(maxPriorityFeePerGas));
+  await secretHandler.deployTransaction.wait(confirmations);
+  
+  console.log(
+    `SecretHandler deployed to ${secretHandler.address}`
+  );
+
+  return secretHandler;
+}
+
+async function verifyContracts(contract) {
+  //verify SecretHandler
+  try {
+    await hre.run('verify:verify', {
+      address: contract.address,
+    });
+  } catch (error) {
+    logError('SecretHandler', error.message);
+  }
+}
+
+function logError(contractName, msg) {
+  console.log(
+    `\x1b[31mError while trying to verify contract: ${contractName}!`
+  );
+  console.log(`Error message: ${msg}`);
+  resetConsoleColor();
+}
+
+function resetConsoleColor() {
+  console.log('\x1b[0m');
+}
 
 async function main() {
-  const currentTimestampInSeconds = Math.round(Date.now() / 1000);
-  const ONE_YEAR_IN_SECS = 365 * 24 * 60 * 60;
-  const unlockTime = currentTimestampInSeconds + ONE_YEAR_IN_SECS;
-
-  const lockedAmount = hre.ethers.utils.parseEther("1");
-
-  const Lock = await hre.ethers.getContractFactory("Lock");
-  const lock = await Lock.deploy(unlockTime, { value: lockedAmount });
-
-  await lock.deployed();
-
-  console.log(
-    `Lock with 1 ETH and unlock timestamp ${unlockTime} deployed to ${lock.address}`
-  );
+  const secrethandler = await deployContracts();
+  await verifyContracts(secrethandler);
 }
 
 // We recommend this pattern to be able to use async/await everywhere
