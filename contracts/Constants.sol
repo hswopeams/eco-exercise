@@ -19,4 +19,7 @@ contract Constants {
     string constant CALLER_NOT_PARTY = "Caller is not party to the secret";
     string constant SECRETS_DO_NOT_MATCH = "Revealed secret does not match committed secret";
     string constant REVEAL_TOO_SOON = "The secret can only be revealed in a block later than the secret commit block";
+
+    // Other constants
+    bytes32 constant SECRET_TYPEHASH = keccak256("Secret(uint256 id,bytes32 message,uint256 blockNumber,address party1,address party2)");
 }
