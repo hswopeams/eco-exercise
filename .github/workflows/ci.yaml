@@ -1,0 +1,87 @@
+name: Secret Handler CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+    types: [ opened, reopened, synchronize, ready_for_review ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.draft == false
+    name: build
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3.1.0
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+      - name: Setup node
+        uses: actions/setup-node@v3.5.1
+        with:
+          node-version: '16.17.x'
+          cache: 'npm'
+      - run: npm install
+      - run: npm run build
+      - run: npm run check:contracts
+      - run: npm run tidy:contracts
+      - run: npm run check:scripts
+      - run: npm run tidy:scripts
+
+  test:
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.draft == false
+    env:
+      CMC_API_KEY: ${{ secrets.COINMARKETCAP_API_KEY }}
+    name: test
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3.1.0
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+      - name: Setup node
+        uses: actions/setup-node@v3.5.1
+        with:
+          node-version: '16.17.x'
+          cache: 'npm'
+      - name: Install Dependencies
+        run: npm install
+      - name: Compile Contracts
+        run: npm run build
+      - name: Contract Sizing
+        run: npm run size
+      - name: Unit tests + Gas Reporter
+        run: npm run test
+      - name: Upload Gas reporter output
+        uses: actions/upload-artifact@v2
+        with:
+          name: gas-reporter-report
+          path: GasReport.txt
+
+  deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    if: ${{ github.actor == 'dependabot[bot]' || github.event.pull_request.user.login == 'dependabot[bot]' }}
+    env:
+      DEPLOYER_HARDHAT_MNEMONIC: ${{ secrets.DEPLOYER_HARDHAT_MNEMONIC }}
+    name: deploy
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3.1.0
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+      - name: Setup node
+        uses: actions/setup-node@v3.5.1
+        with:
+          node-version: '16.17.x'
+          cache: 'npm'
+      - name: Install Dependencies
+        run: npm install
+      - name: Prepare Environment Variables
+        shell: bash
+        run: |
+          cp .env.example .env
+      - name: Deploy contracts locally
+        run: npm run deploy:hardhat
