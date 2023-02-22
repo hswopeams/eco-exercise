@@ -14,7 +14,7 @@ jobs:
     env:
       CMC_API_KEY: ${{ secrets.COINMARKETCAP_API_KEY }}
       DEPLOYER_MUMBAI_TXNODE: https://rpc-mumbai.maticvigil.com/
-      DEPLOYER_MUMBAI_KEY: ${{ secrets.DEPLOYER_MUMBAI_KEY}
+      DEPLOYER_MUMBAI_KEY: ${{ secrets.DEPLOYER_MUMBAI_KEY}}
       DEPLOYER_POLYGONSCAN_API_KEY: ${{ secrets.DEPLOYER_POLYGONSCAN_API_KEY}}
     name: build
     steps:
@@ -41,7 +41,7 @@ jobs:
     env:
       CMC_API_KEY: ${{ secrets.COINMARKETCAP_API_KEY }}
       DEPLOYER_MUMBAI_TXNODE: https://rpc-mumbai.maticvigil.com/
-      DEPLOYER_MUMBAI_KEY: ${{ secrets.DEPLOYER_MUMBAI_KEY}
+      DEPLOYER_MUMBAI_KEY: ${{ secrets.DEPLOYER_MUMBAI_KEY}}
       DEPLOYER_POLYGONSCAN_API_KEY: ${{ secrets.DEPLOYER_POLYGONSCAN_API_KEY}}
     name: test
     steps:
@@ -75,7 +75,7 @@ jobs:
     env:
       CMC_API_KEY: ${{ secrets.COINMARKETCAP_API_KEY }}
       DEPLOYER_MUMBAI_TXNODE: https://rpc-mumbai.maticvigil.com/
-      DEPLOYER_MUMBAI_KEY: ${{ secrets.DEPLOYER_MUMBAI_KEY}
+      DEPLOYER_MUMBAI_KEY: ${{ secrets.DEPLOYER_MUMBAI_KEY}}
       DEPLOYER_POLYGONSCAN_API_KEY: ${{ secrets.DEPLOYER_POLYGONSCAN_API_KEY}}
     name: deploy
     steps:
