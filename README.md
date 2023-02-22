@@ -23,6 +23,11 @@ in the signed message.
 The SecretHandler project has been set up using Node 16.17.1. If you are using nvm, you can use the `nvm use` command to install and/or set the correct node version, which is
 specified in the .nvmrc file.
 
+Run
+```
+npm install
+
+```
 Copy .env.example to .env and provide values for environment variables.
 
 There are a number of npm scripts included for those who are not familiar with hardhat commands.
