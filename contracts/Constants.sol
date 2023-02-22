@@ -21,5 +21,6 @@ contract Constants {
     string constant REVEAL_TOO_SOON = "The secret can only be revealed in a block later than the secret commit block";
 
     // Other constants
-    bytes32 constant SECRET_TYPEHASH = keccak256("Secret(uint256 id,bytes32 message,uint256 blockNumber,address party1,address party2)");
+    bytes32 constant SECRET_TYPEHASH =
+        keccak256("Secret(uint256 id,bytes32 message,uint256 blockNumber,address party1,address party2)");
 }

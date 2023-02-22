@@ -1,0 +1,92 @@
+name: Secret Handler CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+    types: [ opened, reopened, synchronize, ready_for_review ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.draft == false
+    env:
+      CMC_API_KEY: ${{ secrets.COINMARKETCAP_API_KEY }}
+      DEPLOYER_MUMBAI_TXNODE: https://rpc-mumbai.maticvigil.com/
+      DEPLOYER_MUMBAI_KEY: ${{ secrets.DEPLOYER_MUMBAI_KEY}}
+      DEPLOYER_POLYGONSCAN_API_KEY: ${{ secrets.DEPLOYER_POLYGONSCAN_API_KEY}}
+    name: build
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3.1.0
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+      - name: Setup node
+        uses: actions/setup-node@v3.5.1
+        with:
+          node-version: '16.17.x'
+          cache: 'npm'
+      - run: npm install
+      - run: npm run build
+      - run: npm run check:contracts
+      - run: npm run tidy:contracts
+      - run: npm run check:scripts
+      - run: npm run tidy:scripts
+
+  test:
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.draft == false
+    env:
+      CMC_API_KEY: ${{ secrets.COINMARKETCAP_API_KEY }}
+      DEPLOYER_MUMBAI_TXNODE: https://rpc-mumbai.maticvigil.com/
+      DEPLOYER_MUMBAI_KEY: ${{ secrets.DEPLOYER_MUMBAI_KEY}}
+      DEPLOYER_POLYGONSCAN_API_KEY: ${{ secrets.DEPLOYER_POLYGONSCAN_API_KEY}}
+    name: test
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3.1.0
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+      - name: Setup node
+        uses: actions/setup-node@v3.5.1
+        with:
+          node-version: '16.17.x'
+          cache: 'npm'
+      - name: Install Dependencies
+        run: npm install
+      - name: Compile Contracts
+        run: npm run build
+      - name: Contract Sizing
+        run: npm run size
+      - name: Unit tests + Gas Reporter
+        run: npm run test
+        
+  deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    env:
+      CMC_API_KEY: ${{ secrets.COINMARKETCAP_API_KEY }}
+      DEPLOYER_MUMBAI_TXNODE: https://rpc-mumbai.maticvigil.com/
+      DEPLOYER_MUMBAI_KEY: ${{ secrets.DEPLOYER_MUMBAI_KEY}}
+      DEPLOYER_POLYGONSCAN_API_KEY: ${{ secrets.DEPLOYER_POLYGONSCAN_API_KEY}}
+    name: deploy
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3.1.0
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+      - name: Setup node
+        uses: actions/setup-node@v3.5.1
+        with:
+          node-version: '16.17.x'
+          cache: 'npm'
+      - name: Install Dependencies
+        run: npm install
+      - name: Prepare Environment Variables
+        shell: bash
+        run: |
+          cp .env.example .env
+      - name: Deploy contracts locally
+        run: npm run deploy:hardhat
