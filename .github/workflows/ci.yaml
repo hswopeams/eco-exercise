@@ -71,7 +71,6 @@ jobs:
   deploy:
     needs: test
     runs-on: ubuntu-latest
-    if: ${{ github.actor == 'dependabot[bot]' || github.event.pull_request.user.login == 'dependabot[bot]' }}
     env:
       CMC_API_KEY: ${{ secrets.COINMARKETCAP_API_KEY }}
       DEPLOYER_MUMBAI_TXNODE: https://rpc-mumbai.maticvigil.com/
