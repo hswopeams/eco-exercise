@@ -45,7 +45,10 @@ function resetConsoleColor() {
 
 async function main() {
   const secrethandler = await deployContracts();
-  await verifyContracts(secrethandler);
+
+  if (network != "hardhat" && network != "localhost") {
+    await verifyContracts(secrethandler);
+  }
 }
 
 // We recommend this pattern to be able to use async/await everywhere
