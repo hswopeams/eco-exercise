@@ -11,6 +11,11 @@ jobs:
   build:
     runs-on: ubuntu-latest
     if: github.event.pull_request.draft == false
+    env:
+      CMC_API_KEY: ${{ secrets.COINMARKETCAP_API_KEY }}
+      DEPLOYER_MUMBAI_TXNODE: https://rpc-mumbai.maticvigil.com/
+      DEPLOYER_MUMBAI_KEY: ${{ secrets.DEPLOYER_MUMBAI_KEY}
+      DEPLOYER_POLYGONSCAN_API_KEY: ${{ secrets.DEPLOYER_POLYGONSCAN_API_KEY}}
     name: build
     steps:
       - name: Checkout repository
@@ -35,6 +40,9 @@ jobs:
     if: github.event.pull_request.draft == false
     env:
       CMC_API_KEY: ${{ secrets.COINMARKETCAP_API_KEY }}
+      DEPLOYER_MUMBAI_TXNODE: https://rpc-mumbai.maticvigil.com/
+      DEPLOYER_MUMBAI_KEY: ${{ secrets.DEPLOYER_MUMBAI_KEY}
+      DEPLOYER_POLYGONSCAN_API_KEY: ${{ secrets.DEPLOYER_POLYGONSCAN_API_KEY}}
     name: test
     steps:
       - name: Checkout repository
@@ -65,7 +73,10 @@ jobs:
     runs-on: ubuntu-latest
     if: ${{ github.actor == 'dependabot[bot]' || github.event.pull_request.user.login == 'dependabot[bot]' }}
     env:
-      DEPLOYER_HARDHAT_MNEMONIC: ${{ secrets.DEPLOYER_HARDHAT_MNEMONIC }}
+      CMC_API_KEY: ${{ secrets.COINMARKETCAP_API_KEY }}
+      DEPLOYER_MUMBAI_TXNODE: https://rpc-mumbai.maticvigil.com/
+      DEPLOYER_MUMBAI_KEY: ${{ secrets.DEPLOYER_MUMBAI_KEY}
+      DEPLOYER_POLYGONSCAN_API_KEY: ${{ secrets.DEPLOYER_POLYGONSCAN_API_KEY}}
     name: deploy
     steps:
       - name: Checkout repository

@@ -10,7 +10,6 @@ module.exports = {
   networks: {
     localhost: {
       url: "http://127.0.0.1:8545",
-      //accounts: process.env.DEPLOYER_HARDHAT_MNEMONIC
     },
     mumbai: {
       url: process.env.DEPLOYER_MUMBAI_TXNODE,
