@@ -62,11 +62,13 @@ jobs:
         run: npm run size
       - name: Unit tests + Gas Reporter
         run: npm run test
+      - name: Make directory
+        run: mkdir reports
       - name: Upload Gas reporter output
         uses: actions/upload-artifact@v2
         with:
           name: gas-reporter-report
-          path: GasReport.txt
+          path: reports/GasReport.txt
 
   deploy:
     needs: test
