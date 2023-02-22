@@ -16,10 +16,8 @@ async function deployContracts() {
   const SecretHandler = await hre.ethers.getContractFactory("SecretHandler");
   const secretHandler = await SecretHandler.deploy(await getFees(maxPriorityFeePerGas));
   await secretHandler.deployTransaction.wait(confirmations);
-  
-  console.log(
-    `SecretHandler deployed to ${secretHandler.address}`
-  );
+
+  console.log(`SecretHandler deployed to ${secretHandler.address}`);
 
   return secretHandler;
 }
@@ -27,29 +25,30 @@ async function deployContracts() {
 async function verifyContracts(contract) {
   //verify SecretHandler
   try {
-    await hre.run('verify:verify', {
+    await hre.run("verify:verify", {
       address: contract.address,
     });
   } catch (error) {
-    logError('SecretHandler', error.message);
+    logError("SecretHandler", error.message);
   }
 }
 
 function logError(contractName, msg) {
-  console.log(
-    `\x1b[31mError while trying to verify contract: ${contractName}!`
-  );
+  console.log(`\x1b[31mError while trying to verify contract: ${contractName}!`);
   console.log(`Error message: ${msg}`);
   resetConsoleColor();
 }
 
 function resetConsoleColor() {
-  console.log('\x1b[0m');
+  console.log("\x1b[0m");
 }
 
 async function main() {
   const secrethandler = await deployContracts();
-  await verifyContracts(secrethandler);
+
+  if (network != "hardhat" && network != "localhost") {
+    await verifyContracts(secrethandler);
+  }
 }
 
 // We recommend this pattern to be able to use async/await everywhere
