@@ -127,15 +127,21 @@ class Secret {
    * Must be a eip55 compliant Ethereum address
    * @returns {boolean}
    */
-    party2IsValid() {
-      return addressIsValid(this.party2);
-    }
+  party2IsValid() {
+    return addressIsValid(this.party2);
+  }
   /**
    * Is this Secret instance valid?
    * @returns {boolean}
    */
   isValid() {
-    return this.idIsValid() && this.messageIsValid() && this.blockNumberIsValid() && this.party1IsValid() && this.party2IsValid();
+    return (
+      this.idIsValid() &&
+      this.messageIsValid() &&
+      this.blockNumberIsValid() &&
+      this.party1IsValid() &&
+      this.party2IsValid()
+    );
   }
 }
 

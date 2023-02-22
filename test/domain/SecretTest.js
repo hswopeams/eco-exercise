@@ -1,6 +1,6 @@
 const hre = require("hardhat");
 const ethers = hre.ethers;
-const {keccak256, solidityKeccak256} = ethers.utils;
+const { keccak256, solidityKeccak256 } = ethers.utils;
 const toUtf8Bytes = ethers.utils.toUtf8Bytes;
 const { expect } = require("chai");
 const Secret = require("../../scripts/domain/Secret");
@@ -21,8 +21,8 @@ describe("Secret", function () {
       // Required constructor params
       id = "1";
       message = solidityKeccak256(
-          ['bytes32', 'bytes32'],
-          [ethers.utils.formatBytes32String("this is a secret"), ethers.utils.randomBytes(32)]
+        ["bytes32", "bytes32"],
+        [ethers.utils.formatBytes32String("this is a secret"), ethers.utils.randomBytes(32)]
       );
       party1 = accounts[1].address;
       party2 = accounts[2].address;
@@ -49,7 +49,7 @@ describe("Secret", function () {
       // Required constructor params
       id = "1";
       message = solidityKeccak256(
-        ['bytes32', 'bytes32'],
+        ["bytes32", "bytes32"],
         [ethers.utils.formatBytes32String("this is a secret"), ethers.utils.randomBytes(32)]
       );
       party1 = accounts[1].address;
@@ -78,7 +78,7 @@ describe("Secret", function () {
       expect(secret.isValid()).is.false;
 
       // Valid field value
-      secret.message = ethers.utils.hexZeroPad("0x", 32)
+      secret.message = ethers.utils.hexZeroPad("0x", 32);
       expect(secret.messageIsValid()).is.false;
       expect(secret.isValid()).is.false;
 
@@ -88,7 +88,7 @@ describe("Secret", function () {
       expect(secret.isValid()).is.true;
 
       // Valid field value
-      secret.message = ethers.utils.id("0")
+      secret.message = ethers.utils.id("0");
       expect(secret.messageIsValid()).is.true;
       expect(secret.isValid()).is.true;
 
@@ -96,14 +96,14 @@ describe("Secret", function () {
       secret.message = keccak256(toUtf8Bytes("this is a secret"));
       expect(secret.messageIsValid()).is.true;
       expect(secret.isValid()).is.true;
-      
-       // Valid field value
-       secret.message = solidityKeccak256(
-        ['bytes32', 'bytes32'],
+
+      // Valid field value
+      secret.message = solidityKeccak256(
+        ["bytes32", "bytes32"],
         [ethers.utils.formatBytes32String("this is a secret"), ethers.utils.randomBytes(32)]
       );
-       expect(secret.messageIsValid()).is.true;
-       expect(secret.isValid()).is.true;
+      expect(secret.messageIsValid()).is.true;
+      expect(secret.isValid()).is.true;
     });
 
     it("Always present, blockNumber must be the string representation of a BigNumber", async function () {
@@ -176,8 +176,6 @@ describe("Secret", function () {
       expect(secret.party2IsValid()).is.true;
       expect(secret.isValid()).is.true;
     });
-
- 
   });
 
   context("📋 Utility functions", async function () {

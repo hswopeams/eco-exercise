@@ -2,7 +2,6 @@
  * Reasons for SecretHandler transactions to revert
  */
 exports.RevertReasons = {
-
   // Revert reasons
   INVALID_ADDRESS: "Invalid address",
   INVALID_SALT: "Invalid salt",
