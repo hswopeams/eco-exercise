@@ -5,6 +5,7 @@
   "author": "Heather Swope",
   "license": "GPL-3.0-or-later",
   "scripts": {
+    "clean": "npx hardhat clean",
     "build": "npx hardhat compile",
     "test": "npx hardhat test",
     "size": "npx hardhat size-contracts",
