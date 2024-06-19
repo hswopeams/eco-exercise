@@ -20,7 +20,7 @@ the signature can only be validated by the dApp/smart contract for which it was 
 in the signed message.
 
 ## Setup and Scripts
-The SecretHandler project has been set up using Node 16.17.1. If you are using nvm, you can use the `nvm use` command to install and/or set the correct node version, which is
+The SecretHandler project has been set up using Node 18.14. If you are using nvm, you can use the `nvm use` command to install and/or set the correct node version, which is
 specified in the .nvmrc file.
 
 Run
@@ -35,6 +35,12 @@ There are a number of npm scripts included for those who are not familiar with h
 To compile/build contracts
 ```
 npm run build
+
+```
+
+To clean, run
+```
+npm run clean
 
 ```
 To run all unit tests and see the gas report. For this to work properly, specify a value for the GAS_REPORTER_COINMARKETCAP_API_KEY property.
